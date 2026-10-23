@@ -80,8 +80,34 @@ def main(argv: list[str] | None = None) -> int:
     eval_cmd = commands.add_parser("evaluate", help="Score high-severity alerts on labeled scan pairs")
     eval_cmd.add_argument("path", type=Path)
     eval_cmd.add_argument("--output", choices=("table", "json"), default="table")
+    export_cmd = commands.add_parser("export", help="Export last scan as portable sensor evidence")
+    export_cmd.add_argument("path", type=Path)
+    export_cmd.add_argument("--sensor", required=True, help="Stable name for this device")
+    export_cmd.add_argument("--site", required=True, help="Site or room where scan was collected")
+    fuse_cmd = commands.add_parser("fuse", help="Correlate time-aligned captures from multiple sensors")
+    fuse_cmd.add_argument("paths", type=Path, nargs="+")
+    fuse_cmd.add_argument("--skew", type=float, default=30, help="Maximum timestamp difference in seconds")
+    fuse_cmd.add_argument("--output", choices=("table", "json"), default="table")
     args = parser.parse_args(argv)
     try:
+        if args.command == "fuse":
+            from .fusion import fuse, read_capture
+            report = fuse([read_capture(path) for path in args.paths], args.skew)
+            if args.output == "json":
+                print(json.dumps(report, indent=2))
+            else:
+                print(f"AetherLens fusion | {report['sensor_count']} sensors | "
+                      f"{report['shared_bssids']} overlapping BSSIDs")
+                print(f"Compared {report['compared_pairs']} time-aligned transmitter pairs")
+                for finding in report["findings"]:
+                    print(f"  [{finding['severity'].upper()}] {finding['kind']} "
+                          f"{finding['bssid']} across {', '.join(finding['sensors'])}")
+                    for detail in finding["evidence"]:
+                        print(f"    {detail}")
+                if not report["findings"]:
+                    print("No incompatible identities found in comparable observations.")
+                print(report["note"])
+            return 0
         if args.command == "interfaces":
             from .collector import interfaces
             names = interfaces()
@@ -131,6 +157,14 @@ def main(argv: list[str] | None = None) -> int:
                 print("  Synthetic local-storage workload; not wireless scan time or detection accuracy.")
             return 0
         with ScanStore(args.db) as store:
+            if args.command == "export":
+                from .fusion import Capture, write_capture
+                recent = store.latest(1)
+                if not recent:
+                    raise ValueError("No scan available to export")
+                write_capture(args.path, Capture(args.sensor, args.site, recent[0]))
+                print(f"Exported scan to {args.path}")
+                return 0
             if args.command == "scan":
                 snap = scan(args.interface)
                 store.record(snap)
