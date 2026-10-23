@@ -34,6 +34,17 @@ python -m unittest discover -s tests -v
 
 The synthetic benchmark measures SQLite storage operations on the machine where it runs: per-observation commits versus one transaction per scan, plus latest-scan query p50/p95. It **does not** measure over-the-air discovery time or attack-detection accuracy. Results vary with disk, filesystem, cache, hardware, and SQLite settings.
 
+## Detection evaluation
+
+Run the independently labeled scan-pair evaluator:
+
+```bash
+aetherlens evaluate examples/labeled_cases.json
+aetherlens evaluate examples/labeled_cases.json --output json
+```
+
+The included three **simulated** scenarios deliberately contain a true positive, false positive, and false negative. They exercise precision, recall, F1, and false-positive reporting; their scores are not real-world validation. For research-grade results, replace these examples with independently established ground truth from separate capture sites and sessions. In particular, avoid training on the same handcrafted heuristics used to derive your labels.
+
 ## Data model
 
 Every imported snapshot supplies `collected_at` (timezone-aware ISO 8601), `source`, and an `access_points` array. Each observation contains `bssid`, `ssid`, `frequency_mhz`, `signal_dbm`, and `security`. A real example is in [examples/sample_scans.json](examples/sample_scans.json).
