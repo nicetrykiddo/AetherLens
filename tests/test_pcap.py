@@ -55,12 +55,12 @@ class PcapTests(unittest.TestCase):
     def test_radiotap_fcs_is_removed_without_dropping_beacon(self):
         original = beacon_bytes(Network("02:11:22:33:44:10", "Campus"), 3, 300)
         rt = struct.pack("<BBHIBxHHb", 0, 0, 15, 0x2a, 0x10, 2412, 0xa0, -51)
-        packet = rt + original[13:] + b"\\x11\\x22\\x33\\x44"
+        packet = rt + original[13:] + bytes.fromhex("11223344")
         frame = _beacon(packet, 3.0)
         self.assertIsNotNone(frame)
         self.assertEqual(frame.ap.ssid, "Campus")
         bad = struct.pack("<BBHIBxHHb", 0, 0, 15, 0x2a, 0x50, 2412, 0xa0, -51)
-        self.assertIsNone(_beacon(bad + original[13:] + b"\\x00" * 4, 3.0))
+        self.assertIsNone(_beacon(bad + original[13:] + bytes(4), 3.0))
 
     def test_bad_packet_metadata_does_not_generate_fake_results(self):
         packet = beacon_bytes(Network("02:11:22:33:44:10", "Campus"), 0, 0)
