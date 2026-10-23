@@ -1,0 +1,18 @@
+[
+  {
+    "collected_at": "2026-10-23T09:00:00Z",
+    "source": "sample:campus",
+    "access_points": [
+      {"bssid": "02:00:00:00:00:01", "ssid": "Campus-Lab", "frequency_mhz": 2412, "signal_dbm": -45, "security": "WPA2"},
+      {"bssid": "02:00:00:00:00:02", "ssid": "Guest", "frequency_mhz": 5180, "signal_dbm": -68, "security": "OPEN"}
+    ]
+  },
+  {
+    "collected_at": "2026-10-23T09:05:00Z",
+    "source": "sample:campus",
+    "access_points": [
+      {"bssid": "02:00:00:00:00:01", "ssid": "Campus-Lab", "frequency_mhz": 2412, "signal_dbm": -49, "security": "WPA2"},
+      {"bssid": "02:00:00:00:00:03", "ssid": "Campus-Lab", "frequency_mhz": 2462, "signal_dbm": -40, "security": "OPEN"}
+    ]
+  }
+]
