@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS access_points (
     frequency_mhz INTEGER NOT NULL,
     signal_dbm REAL NOT NULL,
     security TEXT NOT NULL,
+    fingerprint TEXT,
     PRIMARY KEY (scan_id, bssid)
 );
 CREATE INDEX IF NOT EXISTS ap_history ON access_points(bssid, scan_id);
@@ -30,6 +31,9 @@ class ScanStore:
         self.conn = sqlite3.connect(self.path)
         self.conn.execute("PRAGMA foreign_keys = ON")
         self.conn.executescript(_SCHEMA)
+        columns = {row[1] for row in self.conn.execute("PRAGMA table_info(access_points)")}
+        if "fingerprint" not in columns:
+            self.conn.execute("ALTER TABLE access_points ADD COLUMN fingerprint TEXT")
 
     def __enter__(self) -> "ScanStore":
         return self
@@ -49,10 +53,10 @@ class ScanStore:
             scan_id = cursor.lastrowid
             self.conn.executemany(
                 """INSERT INTO access_points
-                (scan_id, bssid, ssid, frequency_mhz, signal_dbm, security)
-                VALUES (?, ?, ?, ?, ?, ?)""",
+                (scan_id, bssid, ssid, frequency_mhz, signal_dbm, security, fingerprint)
+                VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    (scan_id, ap.bssid, ap.ssid, ap.frequency_mhz, ap.signal_dbm, ap.security)
+                    (scan_id, ap.bssid, ap.ssid, ap.frequency_mhz, ap.signal_dbm, ap.security, ap.fingerprint)
                     for ap in snapshot.access_points
                 ),
             )
@@ -66,7 +70,7 @@ class ScanStore:
         for scan_id, collected_at, source in rows:
             points = [
                 AccessPoint(*row) for row in self.conn.execute(
-                    """SELECT bssid, ssid, frequency_mhz, signal_dbm, security
+                    """SELECT bssid, ssid, frequency_mhz, signal_dbm, security, fingerprint
                     FROM access_points WHERE scan_id = ? ORDER BY signal_dbm DESC, bssid""",
                     (scan_id,),
                 )
