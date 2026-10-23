@@ -100,7 +100,8 @@ def run_lab(seeds: int = 10, loss_rates: tuple[float, ...] = (0.0, 0.2, 0.5),
         return run_at(Path(temporary))
 
 def run_cooperative_lab(seeds: int = 20, sensors: int = 3,
-                        loss_rates: tuple[float, ...] = (0.2, 0.5)) -> dict:
+                        loss_rates: tuple[float, ...] = (0.2, 0.5),
+                        loss_model: str = "independent") -> dict:
     """Compare one observer with an any-sensor alert baseline.
 
     Each detector evaluates its own frame timeline independently. A receiver
@@ -117,6 +118,8 @@ def run_cooperative_lab(seeds: int = 20, sensors: int = 3,
         raise ValueError("sensors must be in 2..8")
     if not 1 <= len(loss_rates) <= 10 or any(not 0 <= x <= 1 for x in loss_rates):
         raise ValueError("provide 1..10 loss rates in 0..1")
+    if loss_model not in ("independent", "shared"):
+        raise ValueError("loss_model must be independent or shared")
     rows = []
     with TemporaryDirectory(prefix="aetherlens-coop-lab-") as temporary:
         for loss in loss_rates:
@@ -129,7 +132,7 @@ def run_cooperative_lab(seeds: int = 20, sensors: int = 3,
                         path = Path(temporary) / f"capture-{sensor}.pcap"
                         write_pcap(
                             path, scenario.frames,
-                            seed=seed * 7919 + sensor * 65537 + 31,
+                            seed=seed * 7919 + (sensor * 65537 if loss_model == "independent" else 0) + 31,
                             packet_loss=loss, frame_repeats=3,
                             schedule=scenario.schedule,
                         )
@@ -170,9 +173,10 @@ def run_cooperative_lab(seeds: int = 20, sensors: int = 3,
         "workload": "synthetic_independent_packet_loss_capture_diversity",
         "seeds": seeds,
         "sensor_count": sensors,
+        "loss_model": loss_model,
         "results": rows,
         "limitations": [
-            "Uncalibrated independent random frame drops; real sensors may have correlated losses",
+            "Frame drops are either independent (optimistic) or perfectly shared (pessimistic); real wireless links have mixed correlation",
             "Idealized identical transmitted frames; sensors compare only their own clocks",
             "An any-sensor alert can increase false positives as more receivers participate",
             "A synthetic corpus cannot validate field threat detection or prove physical localization",
