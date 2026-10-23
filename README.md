@@ -91,10 +91,11 @@ These results **cannot predict coverage in unvisited areas**. Repeated measureme
 ```bash
 aetherlens benchmark --aps 1000 --repeats 5
 aetherlens benchmark --aps 1000 --repeats 5 --output json
+aetherlens benchmark-fusion --aps 5000 --sensors 3 --repeats 7 --output json
 python -m unittest discover -s tests -v
 ```
 
-The synthetic benchmark measures SQLite storage operations on the machine where it runs: per-observation commits versus one transaction per scan, plus latest-scan query p50/p95. It **does not** measure over-the-air discovery time or attack-detection accuracy. Results vary with disk, filesystem, cache, hardware, and SQLite settings.
+The storage benchmark measures SQLite operations, while `benchmark-fusion` measures offline pairwise evidence correlation latency and throughput. Both are synthetic and report p50/p95 timings. The synthetic benchmark measures SQLite storage operations on the machine where it runs: per-observation commits versus one transaction per scan, plus latest-scan query p50/p95. It **does not** measure over-the-air discovery time or attack-detection accuracy. Results vary with disk, filesystem, cache, hardware, and SQLite settings.
 
 ## Detection evaluation
 
