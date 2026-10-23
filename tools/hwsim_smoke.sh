@@ -6,15 +6,16 @@ if [[ ${EUID} -ne 0 ]]; then
   echo "Run with sudo; mac80211_hwsim and virtual interfaces require root." >&2
   exit 2
 fi
-for command in iw ip hostapd modprobe python3 grep sort comm; do
+for command in iw ip hostapd modprobe lsmod awk mktemp grep sort comm; do
   command -v "$command" >/dev/null || { echo "Missing dependency: $command" >&2; exit 2; }
 done
 if lsmod | grep -q '^mac80211_hwsim '; then
   echo "mac80211_hwsim is already loaded; refusing to modify existing virtual radios." >&2
   exit 2
 fi
-# Use the calling shell's installed Python package or editable repo installation.
-python3 -c 'import aetherlens' || {
+# Select the venv interpreter explicitly when sudo has a different Python path.
+python="${AETHERLENS_PYTHON:-python3}"
+"$python" -c 'import aetherlens' || {
   echo "Install the package first: python -m pip install -e ." >&2
   exit 2
 }
@@ -22,6 +23,10 @@ python3 -c 'import aetherlens' || {
 output="${1:-./hwsim-evidence}"
 mkdir -p "$output"
 output="$(cd "$output" && pwd)"
+if [[ -e "$output/survey.sqlite" ]]; then
+  echo "Refusing to append to an existing experiment: $output/survey.sqlite" >&2
+  exit 2
+fi
 before="$(mktemp)"
 after="$(mktemp)"
 iw phy | awk '/^Wiphy / {print $2}' | sort > "$before"
@@ -86,7 +91,7 @@ secure_pid="$(cat "$output/secure.pid")"
 scan_into() {
   local attempt=0
   while (( attempt < 10 )); do
-    if python3 -m aetherlens --db "$output/survey.sqlite" scan --interface "$station" > "$output/scan-$1.log" 2>&1; then
+    if "$python" -m aetherlens --db "$output/survey.sqlite" scan --interface "$station" > "$output/scan-$1.log" 2>&1; then
       if grep -q 'AetherLens-Lab' "$output/scan-$1.log"; then
         return 0
       fi
@@ -104,8 +109,8 @@ hostapd -B -P "$output/open.pid" -f "$output/open.log" "$output/open.conf"
 open_pid="$(cat "$output/open.pid")"
 scan_into replica
 
-python3 -m aetherlens --db "$output/survey.sqlite" report --output json > "$output/result.json"
-python3 - "$output/result.json" <<'PY'
+"$python" -m aetherlens --db "$output/survey.sqlite" report --output json > "$output/result.json"
+"$python" - "$output/result.json" <<'PY'
 import json
 import sys
 with open(sys.argv[1], encoding="utf-8") as source:
