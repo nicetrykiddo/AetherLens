@@ -108,7 +108,7 @@ class Trace:
         return findings
 
 
-def _radiotap(packet: bytes) -> tuple[int, int, int] | None:
+def _radiotap(packet: bytes) -> tuple[int, int, int, int] | None:
     if len(packet) < 8 or packet[0] != 0:
         return None
     length = struct.unpack_from("<H", packet, 2)[0]
@@ -126,28 +126,37 @@ def _radiotap(packet: bytes) -> tuple[int, int, int] | None:
             break
     present = words[0]
     frequency = signal = None
+    flags = 0
     for bit, (alignment, size) in enumerate(_RADIOTAP_FIELDS):
         if not (present & (1 << bit)):
             continue
         offset = (offset + alignment - 1) & ~(alignment - 1)
         if offset + size > length:
             return None
-        if bit == 3:
+        if bit == 1:
+            flags = packet[offset]
+        elif bit == 3:
             frequency = struct.unpack_from("<H", packet, offset)[0]
         elif bit == 5:
             signal = struct.unpack_from("<b", packet, offset)[0]
         offset += size
     if frequency is None or signal is None:
         return None
-    return length, frequency, signal
+    return length, frequency, signal, flags
 
 
 def _beacon(packet: bytes, timestamp: float) -> Beacon | None:
     radio = _radiotap(packet)
     if radio is None:
         return None
-    offset, frequency, rssi = radio
+    offset, frequency, rssi, flags = radio
+    if flags & 0x40:  # Radiotap reports failed FCS check
+        return None
     data = packet[offset:]
+    if flags & 0x10:  # Radiotap says trailing IEEE 802.11 FCS is present
+        if len(data) < 4:
+            return None
+        data = data[:-4]
     if len(data) < 36:
         return None
     control = struct.unpack_from("<H", data, 0)[0]
