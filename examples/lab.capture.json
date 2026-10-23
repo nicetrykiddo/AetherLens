@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "sensor_id": "lab-laptop",
+  "site_id": "Lab A",
+  "snapshot": {
+    "collected_at": "2026-10-23T11:00:00Z",
+    "source": "synthetic:example",
+    "access_points": [
+      {
+        "bssid": "02:00:00:00:00:01",
+        "ssid": "Campus",
+        "frequency_mhz": 2412,
+        "signal_dbm": -49,
+        "security": "WPA2",
+        "fingerprint": null
+      },
+      {
+        "bssid": "02:00:00:00:00:02",
+        "ssid": "Guest",
+        "frequency_mhz": 2412,
+        "signal_dbm": -72,
+        "security": "OPEN",
+        "fingerprint": null
+      }
+    ]
+  },
+  "sha256": "654798bb124fe7fa8a9fd6be57273570d6e3237152983ece7fffdc7823c236da"
+}

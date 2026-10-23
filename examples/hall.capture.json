@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "sensor_id": "hall-laptop",
+  "site_id": "Hall B",
+  "snapshot": {
+    "collected_at": "2026-10-23T11:00:00Z",
+    "source": "synthetic:example",
+    "access_points": [
+      {
+        "bssid": "02:00:00:00:00:01",
+        "ssid": "Campus",
+        "frequency_mhz": 2412,
+        "signal_dbm": -52,
+        "security": "OPEN",
+        "fingerprint": null
+      },
+      {
+        "bssid": "02:00:00:00:00:03",
+        "ssid": "Visitor",
+        "frequency_mhz": 2412,
+        "signal_dbm": -65,
+        "security": "WPA3",
+        "fingerprint": null
+      }
+    ]
+  },
+  "sha256": "c4e5c31ce724b76f9b12ca197ec0e0490240d3b682b0a292e38cade35d23f6bc"
+}
