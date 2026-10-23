@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import re
 
+_FINGERPRINT = re.compile(r"(?:ie1|iw1):[0-9a-f]{64}\\Z")
 _MAC = re.compile(r"(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}\Z")
 
 
@@ -14,6 +15,7 @@ class AccessPoint:
     frequency_mhz: int
     signal_dbm: float
     security: str
+    fingerprint: str | None = None
 
     def __post_init__(self) -> None:
         if not _MAC.fullmatch(self.bssid):
@@ -27,6 +29,8 @@ class AccessPoint:
             raise ValueError("signal strength must be between -120 and 0 dBm")
         if self.security not in {"OPEN", "WEP", "WPA", "WPA2", "WPA3", "WPA2/WPA3", "OWE"}:
             raise ValueError(f"unknown security type: {self.security}")
+        if self.fingerprint is not None and not _FINGERPRINT.fullmatch(self.fingerprint):
+            raise ValueError("invalid radio fingerprint")
 
 
 @dataclass(frozen=True, slots=True)
