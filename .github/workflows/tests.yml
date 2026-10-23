@@ -29,3 +29,6 @@ jobs:
       - run: aetherlens --db aetherlens-ci.sqlite import examples/sample_scans.json
       - run: aetherlens benchmark --aps 100 --repeats 1 --output json
       - run: aetherlens evaluate examples/labeled_cases.json --output json
+      - run: aetherlens fuse examples/lab.capture.json examples/hall.capture.json --output json
+      - run: aetherlens fuse examples/lab.capture.json examples/hall.capture.json --output html --save report.html
+      - run: aetherlens plan examples/lab.capture.json examples/hall.capture.json --budget 1 --output json
