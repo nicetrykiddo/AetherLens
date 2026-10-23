@@ -32,3 +32,4 @@ jobs:
       - run: aetherlens fuse examples/lab.capture.json examples/hall.capture.json --output json
       - run: aetherlens fuse examples/lab.capture.json examples/hall.capture.json --output html --save report.html
       - run: aetherlens plan examples/lab.capture.json examples/hall.capture.json --budget 1 --output json
+      - run: aetherlens benchmark-fusion --aps 100 --sensors 3 --repeats 2 --output json
