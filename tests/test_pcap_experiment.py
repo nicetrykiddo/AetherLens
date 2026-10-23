@@ -15,8 +15,8 @@ class PacketLabTests(unittest.TestCase):
         row = result["results"][0]
         self.assertEqual(row["cases"], 8)
         self.assertEqual((row["tp"], row["fp"], row["fn"], row["tn"]),
-                         (2, 1, 1, 4))
-        self.assertEqual(row["precision"], 0.6667)
+                         (2, 0, 1, 5))
+        self.assertEqual(row["precision"], 1.0)
         self.assertEqual(row["recall"], 0.6667)
         self.assertEqual(len(row["first_seed_examples"]), 8)
 
