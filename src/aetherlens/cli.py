@@ -109,6 +109,11 @@ def main(argv: list[str] | None = None) -> int:
     lab_cmd.add_argument("--loss", type=float, nargs="+", default=[0.0, 0.2, 0.5])
     lab_cmd.add_argument("--evidence", type=Path, help="Directory in which to retain generated PCAPs")
     lab_cmd.add_argument("--output", choices=("table", "json"), default="table")
+    cooperative = commands.add_parser("lab-cooperative", help="Compare one Wi-Fi observer with multiple independent observers")
+    cooperative.add_argument("--seeds", type=int, default=20)
+    cooperative.add_argument("--sensors", type=int, default=3)
+    cooperative.add_argument("--loss", type=float, nargs="+", default=[0.2, 0.5])
+    cooperative.add_argument("--output", choices=("table", "json"), default="table")
     args = parser.parse_args(argv)
     try:
         if args.command == "replay-pcap":
@@ -136,6 +141,23 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  [REVIEW] {finding['kind']}: {finding['bssid']} "
                           f"({finding['delta_ms']}ms)")
                 print("Frame observations are evidence, not attack attribution.")
+            return 0
+        if args.command == "lab-cooperative":
+            from .pcap_experiment import run_cooperative_lab
+            report = run_cooperative_lab(args.seeds, args.sensors, tuple(args.loss))
+            if args.output == "json":
+                print(json.dumps(report, indent=2))
+            else:
+                print(f"AetherLens cooperative detection | {report['sensor_count']} observers | "
+                      f"{report['seeds']} seeds")
+                for row in report["results"]:
+                    first, combined = row["single_sensor"], row["cooperative"]
+                    print(f"  loss={row['loss_rate']:.0%}: "
+                          f"single recall={first['recall']:.3f} FPR={first['false_positive_rate']:.3f} | "
+                          f"any-sensor recall={combined['recall']:.3f} "
+                          f"FPR={combined['false_positive_rate']:.3f} | "
+                          f"recovered={row['missed_attacks_recovered']}")
+                print("Synthetic per-receiver packet drops; not field-measured RF performance.")
             return 0
         if args.command == "lab":
             from .pcap_experiment import run_lab
