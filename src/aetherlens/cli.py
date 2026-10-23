@@ -100,8 +100,58 @@ def main(argv: list[str] | None = None) -> int:
     fusion_bench.add_argument("--sensors", type=int, default=3)
     fusion_bench.add_argument("--repeats", type=int, default=7)
     fusion_bench.add_argument("--output", choices=("table", "json"), default="table")
+    pcap_cmd = commands.add_parser("replay-pcap", help="Decode raw 802.11 beacons from a Radiotap PCAP")
+    pcap_cmd.add_argument("path", type=Path)
+    pcap_cmd.add_argument("--output", choices=("table", "json"), default="table")
+    pcap_cmd.add_argument("--record", action="store_true", help="Save a summary snapshot into the database")
+    lab_cmd = commands.add_parser("lab", help="Run adversarial packet replay with independent ground truth")
+    lab_cmd.add_argument("--seeds", type=int, default=10)
+    lab_cmd.add_argument("--loss", type=float, nargs="+", default=[0.0, 0.2, 0.5])
+    lab_cmd.add_argument("--evidence", type=Path, help="Directory in which to retain generated PCAPs")
+    lab_cmd.add_argument("--output", choices=("table", "json"), default="table")
     args = parser.parse_args(argv)
     try:
+        if args.command == "replay-pcap":
+            from .pcap import read_pcap
+            trace = read_pcap(args.path)
+            conflicts = trace.contradictions()
+            unique = len({frame.ap.bssid for frame in trace.frames})
+            report = {
+                "file": str(args.path),
+                "packets_read": trace.packets_read,
+                "supported_beacons": len(trace.frames),
+                "packets_skipped": trace.packets_skipped,
+                "unique_bssids": unique,
+                "findings": conflicts,
+            }
+            if args.record and trace.frames:
+                with ScanStore(args.db) as store:
+                    report["scan_id"] = store.record(trace.snapshot(f"pcap:{args.path.name}"))
+            if args.output == "json":
+                print(json.dumps(report, indent=2))
+            else:
+                print(f"AetherLens PCAP replay | {trace.packets_read} frames | "
+                      f"{len(trace.frames)} supported beacons | {unique} BSSIDs")
+                for finding in conflicts:
+                    print(f"  [REVIEW] {finding['kind']}: {finding['bssid']} "
+                          f"({finding['delta_ms']}ms)")
+                print("Frame observations are evidence, not attack attribution.")
+            return 0
+        if args.command == "lab":
+            from .pcap_experiment import run_lab
+            report = run_lab(args.seeds, tuple(args.loss), args.evidence)
+            if args.output == "json":
+                print(json.dumps(report, indent=2))
+            else:
+                print(f"AetherLens packet lab | {report['scenario_count']} scenarios | "
+                      f"{report['seeds']} seeds")
+                for row in report["results"]:
+                    print(f"  loss={row['loss_rate']:.0%}: "
+                          f"TP={row['tp']} FP={row['fp']} FN={row['fn']} TN={row['tn']} "
+                          f"precision={row['precision']:.3f} recall={row['recall']:.3f} "
+                          f"F1={row['f1']:.3f} p50={row['decode_and_detection_median_ms']:.3f}ms")
+                print("Synthetic 802.11 frames, not real-world attack accuracy.")
+            return 0
         if args.command == "benchmark-fusion":
             from .fusion_benchmark import benchmark_fusion
             data = benchmark_fusion(args.aps, args.sensors, args.repeats)
