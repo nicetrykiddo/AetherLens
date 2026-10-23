@@ -34,5 +34,6 @@ jobs:
       - run: aetherlens plan examples/lab.capture.json examples/hall.capture.json --budget 1 --output json
       - run: aetherlens benchmark-fusion --aps 100 --sensors 3 --repeats 2 --output json
       - run: aetherlens lab --seeds 3 --loss 0 0.2 0.5 --output json
+      - run: aetherlens lab-cooperative --seeds 8 --sensors 3 --loss 0 0.2 0.5 --output json
       - run: bash -n tools/hwsim_smoke.sh
         if: runner.os == 'Linux'
