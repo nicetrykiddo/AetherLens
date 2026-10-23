@@ -1,0 +1,47 @@
+[
+  {
+    "scenario": "lab-open-replica",
+    "previous": {
+      "collected_at": "2026-10-23T10:00:00Z", "source": "simulated:lab",
+      "access_points": [{"bssid": "02:00:00:00:00:01", "ssid": "Campus", "frequency_mhz": 2412, "signal_dbm": -50, "security": "WPA2"}]
+    },
+    "current": {
+      "collected_at": "2026-10-23T10:01:00Z", "source": "simulated:lab",
+      "access_points": [
+        {"bssid": "02:00:00:00:00:01", "ssid": "Campus", "frequency_mhz": 2412, "signal_dbm": -48, "security": "WPA2"},
+        {"bssid": "02:00:00:00:00:02", "ssid": "Campus", "frequency_mhz": 2437, "signal_dbm": -35, "security": "OPEN"}
+      ]
+    },
+    "suspicious_bssids": ["02:00:00:00:00:02"]
+  },
+  {
+    "scenario": "benign-open-overlap",
+    "previous": {
+      "collected_at": "2026-10-23T10:00:00Z", "source": "simulated:lab",
+      "access_points": [{"bssid": "02:00:00:00:00:03", "ssid": "Guest", "frequency_mhz": 2412, "signal_dbm": -50, "security": "WPA2"}]
+    },
+    "current": {
+      "collected_at": "2026-10-23T10:01:00Z", "source": "simulated:lab",
+      "access_points": [
+        {"bssid": "02:00:00:00:00:03", "ssid": "Guest", "frequency_mhz": 2412, "signal_dbm": -50, "security": "WPA2"},
+        {"bssid": "02:00:00:00:00:04", "ssid": "Guest", "frequency_mhz": 2437, "signal_dbm": -70, "security": "OPEN"}
+      ]
+    },
+    "suspicious_bssids": []
+  },
+  {
+    "scenario": "same-security-impostor",
+    "previous": {
+      "collected_at": "2026-10-23T10:00:00Z", "source": "simulated:lab",
+      "access_points": [{"bssid": "02:00:00:00:00:05", "ssid": "Office", "frequency_mhz": 2412, "signal_dbm": -50, "security": "WPA2"}]
+    },
+    "current": {
+      "collected_at": "2026-10-23T10:01:00Z", "source": "simulated:lab",
+      "access_points": [
+        {"bssid": "02:00:00:00:00:05", "ssid": "Office", "frequency_mhz": 2412, "signal_dbm": -50, "security": "WPA2"},
+        {"bssid": "02:00:00:00:00:06", "ssid": "Office", "frequency_mhz": 2462, "signal_dbm": -40, "security": "WPA2"}
+      ]
+    },
+    "suspicious_bssids": ["02:00:00:00:00:06"]
+  }
+]
