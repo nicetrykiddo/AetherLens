@@ -26,6 +26,14 @@ class CooperativeLabTests(unittest.TestCase):
         self.assertTrue(unsafe_merge.contradictions())  # demonstrates the bug
         self.assertFalse(any(bool(x.contradictions()) for x in (first, second)))
 
+    def test_shared_losses_cannot_magically_recover_missing_beacons(self):
+        report = run_cooperative_lab(
+            seeds=8, sensors=3, loss_rates=(0.25, 0.5), loss_model="shared",
+        )
+        for row in report["results"]:
+            self.assertEqual(row["cooperative"], row["single_sensor"])
+            self.assertEqual(row["missed_attacks_recovered"], 0)
+
     def test_conservative_any_sensor_baseline(self):
         result = run_cooperative_lab(seeds=4, sensors=3, loss_rates=(0.0, 0.5))
         self.assertEqual(result["sensor_count"], 3)
