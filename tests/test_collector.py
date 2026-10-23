@@ -1,3 +1,4 @@
+import sys
 import unittest
 from aetherlens.collector import parse_iw_scan
 from aetherlens.model import AccessPoint, Snapshot
@@ -41,6 +42,7 @@ class CollectorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             Snapshot.create([ap, ap], source="test")
 
+    @unittest.skipUnless(sys.platform == "linux", "Linux iw interface validation")
     def test_no_shell_or_command_injection(self):
         from aetherlens.collector import scan
         with self.assertRaises(ValueError):
