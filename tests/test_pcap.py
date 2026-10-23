@@ -33,7 +33,7 @@ class PcapTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             for scenario in scenarios():
                 path = Path(directory) / (scenario.name + ".pcap")
-                write_pcap(path, scenario.frames, frame_repeats=3)
+                write_pcap(path, scenario.frames, frame_repeats=3, schedule=scenario.schedule)
                 trace = read_pcap(path)
                 results[scenario.name] = bool(trace.contradictions())
         self.assertTrue(results["open_clone"])
@@ -42,7 +42,7 @@ class PcapTests(unittest.TestCase):
         self.assertFalse(results["channel_switch"])
         self.assertFalse(results["hidden_ssid"])
         self.assertFalse(results["independent_guest"])
-        self.assertTrue(results["firmware_security_migration"])  # known false positive
+        self.assertFalse(results["firmware_security_migration"])  # one-way migration
         self.assertFalse(results["same_security_clone"])  # known false negative
 
     def test_padding_in_radiotap_before_channel(self):
