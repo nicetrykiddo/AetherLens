@@ -73,6 +73,37 @@ Each export has a SHA-256 integrity checksum, **not a cryptographic signature or
 
 The feature is designed for low-overhead, authorized wireless surveys; raw scan summaries alone cannot observe client attacks, deauthentication traffic, or all nearby networks.
 
+## Packet-level 802.11 adversarial lab
+
+AetherLens can ingest actual 802.11 **beacon and probe-response management frames** from classic PCAP files with Radiotap metadata. Unlike a driver scan summary, these files retain individual frame observations so different security or radio identities advertising the same BSSID can be compared over time.
+
+```bash
+aetherlens replay-pcap capture.pcap --output json
+aetherlens replay-pcap capture.pcap --record --db survey.sqlite
+aetherlens lab --seeds 20 --loss 0 0.2 0.5 --output json
+aetherlens lab --seeds 1 --loss 0 --evidence generated
+aetherlens replay-pcap generated/open_clone-seed0-loss0000.pcap
+```
+
+The lab constructs structurally valid 802.11 beacon frames and Radiotap metadata, writes real PCAP-format files, then feeds those **bytes** through the same parser exposed to external captures. The experiment varies frame loss, includes independent benign labels, and reports TP/FP/FN/TN, precision, recall, F1, and parser/detection latency. Expected attack scenarios include an open BSSID clone, a same-security clone, and radio capability impersonation. The suite also tests normal multi-AP deployment, hidden networks, channel changes and one-way security migrations.
+
+The packet detector looks for an **A-B-A alternation** in a short window, instead of flagging every single configuration change as an attack. It intentionally misses indistinguishable clones; a genuine transient migration can also be confused with an attacker if the observed capabilities alternate. Synthetic classification scores are **not** field attack-detection accuracy.
+
+Only classic Radiotap PCAP (linktype 127) is currently supported, **not pcapng or Ethernet captures**. Use Wireshark's `editcap -F libpcap input.pcapng output.pcap` to convert compatible capture files. Drivers must expose management frames and Radiotap RSSI/channel metadata. An ordinary Windows association capture generally does not do that without monitor-mode support.
+
+## Virtual radios on Linux (hardware-in-the-loop style)
+
+On an authorized local Linux machine with the `mac80211_hwsim` kernel module, the following **privileged** experiment creates three temporary virtual radios: a WPA2 AP, a scanner, and an open AP that advertises the same SSID. It then performs actual `iw` scans through Linux's Wi-Fi stack and checks the detection output.
+
+```bash
+sudo pacman -S --needed iw hostapd python
+python -m venv .venv
+.venv/bin/python -m pip install -e .
+sudo AETHERLENS_PYTHON="$PWD/.venv/bin/python" bash tools/hwsim_smoke.sh ./hwsim-evidence
+```
+
+It refuses to touch an already-loaded `mac80211_hwsim` installation or reuse an experiment database, and cleans up interfaces and test APs. The full smoke test cannot run in normal hosted CI runners without the module and privileges; CI only verifies shell syntax. Do **not** interpret virtual-radio success as an over-the-air RF test. Actual physical WLAN validation still requires a real adapter and controlled test infrastructure.
+
 ## Pick the most useful observation sites
 
 After collecting several pilot captures from different locations, choose the locations that expose the most **observed** unique transmitters within a site budget:
