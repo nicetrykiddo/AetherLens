@@ -17,3 +17,4 @@ jobs:
       - run: python -m unittest discover -s tests -v
       - run: aetherlens --db /tmp/aetherlens-ci.sqlite import examples/sample_scans.json
       - run: aetherlens benchmark --aps 100 --repeats 1 --output json
+      - run: aetherlens evaluate examples/labeled_cases.json --output json
