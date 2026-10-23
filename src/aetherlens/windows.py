@@ -13,6 +13,7 @@ from threading import Event
 from uuid import UUID
 
 from .model import AccessPoint, Snapshot
+from .fingerprint import ie_fingerprint
 
 
 class _Guid(ctypes.Structure):
@@ -265,6 +266,7 @@ def _read_bss(api, handle, guid: _Guid) -> list[AccessPoint]:
                     ":".join(f"{byte:02x}" for byte in entry.bssid),
                     ssid, int(entry.frequency_khz // 1000), float(entry.rssi),
                     _security(entry.capabilities, information_elements),
+                    ie_fingerprint(information_elements),
                 )
             except (UnicodeError, ValueError):
                 continue
