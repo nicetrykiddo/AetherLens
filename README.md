@@ -73,6 +73,19 @@ Each export has a SHA-256 integrity checksum, **not a cryptographic signature or
 
 The feature is designed for low-overhead, authorized wireless surveys; raw scan summaries alone cannot observe client attacks, deauthentication traffic, or all nearby networks.
 
+## Pick the most useful observation sites
+
+After collecting several pilot captures from different locations, choose the locations that expose the most **observed** unique transmitters within a site budget:
+
+```bash
+aetherlens plan hallway.json lab.json library.json --budget 2
+aetherlens plan hallway.json lab.json library.json --budget 2 --witnesses 2 --output json
+```
+
+The planner solves a budgeted maximum-coverage problem with a greedy algorithm, then compares against exhaustive optimal selection whenever the candidate search space has at most 50,000 combinations. The `--witnesses` option awards additional coverage credit when a transmitter is observed from more than one site. Signal-strength filtering is available with `--min-rssi`.
+
+These results **cannot predict coverage in unvisited areas**. Repeated measurements at the same site are treated as one possible station. A coverage score is not an RF propagation model or a positioning estimate.
+
 ## Reproducible performance benchmark
 
 ```bash
