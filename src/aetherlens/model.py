@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import re
 
-_FINGERPRINT = re.compile(r"(?:ie1|iw1):[0-9a-f]{64}\\Z")
+_FINGERPRINT = re.compile(r"(?:ie1|iw1):[0-9a-f]{64}\Z")
 _MAC = re.compile(r"(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}\Z")
 
 
