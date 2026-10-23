@@ -66,8 +66,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="aetherlens", description="Wireless AP discovery and change detection")
     parser.add_argument("--db", default="aetherlens.sqlite", help="SQLite database path")
     commands = parser.add_subparsers(dest="command", required=True)
-    scan_cmd = commands.add_parser("scan", help="Collect access points using Linux iw")
-    scan_cmd.add_argument("--interface", "-i", required=True, help="Wi-Fi interface (e.g. wlan0)")
+    scan_cmd = commands.add_parser("scan", help="Collect nearby Wi-Fi access points")
+    scan_cmd.add_argument("--interface", "-i", help="Adapter name (required on Linux; optional on Windows)")
+    commands.add_parser("interfaces", help="List wireless adapters available to AetherLens")
     import_cmd = commands.add_parser("import", help="Import one or more recorded JSON snapshots")
     import_cmd.add_argument("path", type=Path)
     report_cmd = commands.add_parser("report", help="Show the most recent scan and changes")
@@ -81,6 +82,14 @@ def main(argv: list[str] | None = None) -> int:
     eval_cmd.add_argument("--output", choices=("table", "json"), default="table")
     args = parser.parse_args(argv)
     try:
+        if args.command == "interfaces":
+            from .collector import interfaces
+            names = interfaces()
+            if names:
+                print("\\n".join(names))
+            else:
+                print("No wireless adapters available")
+            return 0
         if args.command == "evaluate":
             from .evaluation import LabeledPair, evaluate
             raw = json.loads(args.path.read_text(encoding="utf-8"))
