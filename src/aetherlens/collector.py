@@ -5,6 +5,7 @@ import subprocess
 import sys
 
 from .model import AccessPoint, Snapshot
+from .fingerprint import iw_fingerprint
 
 _BSS = re.compile(r"^BSS\s+([0-9a-f:]{17})\b", re.IGNORECASE)
 _FREQ = re.compile(r"^freq:\s*(\d+)")
@@ -56,7 +57,7 @@ def parse_iw_scan(raw: str) -> list[AccessPoint]:
         if freq is None or signal is None or ssid_line is None:
             continue
         try:
-            point = AccessPoint(bssid, ssid_line.removeprefix("SSID:").strip(), int(freq), float(signal), _security(block))
+            point = AccessPoint(bssid, ssid_line.removeprefix("SSID:").strip(), int(freq), float(signal), _security(block), iw_fingerprint(block))
         except ValueError:
             continue
         old = points.get(point.bssid)
