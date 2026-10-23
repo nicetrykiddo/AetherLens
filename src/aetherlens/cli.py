@@ -95,8 +95,30 @@ def main(argv: list[str] | None = None) -> int:
     plan_cmd.add_argument("--witnesses", type=int, default=1, help="Desired observers per transmitter (1-3)")
     plan_cmd.add_argument("--min-rssi", type=float, default=-85)
     plan_cmd.add_argument("--output", choices=("table", "json"), default="table")
+    fusion_bench = commands.add_parser("benchmark-fusion", help="Measure multi-sensor correlation latency")
+    fusion_bench.add_argument("--aps", type=int, default=1000)
+    fusion_bench.add_argument("--sensors", type=int, default=3)
+    fusion_bench.add_argument("--repeats", type=int, default=7)
+    fusion_bench.add_argument("--output", choices=("table", "json"), default="table")
     args = parser.parse_args(argv)
     try:
+        if args.command == "benchmark-fusion":
+            from .fusion_benchmark import benchmark_fusion
+            data = benchmark_fusion(args.aps, args.sensors, args.repeats)
+            if args.output == "json":
+                print(json.dumps(data, indent=2))
+            else:
+                print(f"AetherLens cooperative benchmark | {data['sensors']} sensors "
+                      f"| {data['unique_bssids']} transmitters")
+                print(f"  Observations: {data['total_observations']}")
+                print(f"  Comparable pairs: {data['comparable_pairs']}")
+                print(f"  Latency p50/p95: {data['runtime_p50_ms']:.2f} / "
+                      f"{data['runtime_p95_ms']:.2f} ms")
+                print(f"  Throughput: {data['correlations_per_second']:,} pairs/s")
+                print(f"  Injected conflicts found: "
+                      f"{data['injected_security_conflicts_found']}")
+                print(data["note"])
+            return 0
         if args.command == "plan":
             from .fusion import read_capture
             from .planning import plan_sites
