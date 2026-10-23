@@ -27,7 +27,7 @@ class ReportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "report.html"
             save_fusion(path, report)
-            self.assertTrue(path.read_text().startswith("<!doctype html>"))
+            self.assertTrue(path.read_text(encoding="utf-8").startswith("<!doctype html>"))
 
 
 if __name__ == "__main__":
