@@ -67,23 +67,35 @@ class Trace:
             per_bssid.setdefault(item.ap.bssid, []).append(item)
         findings = []
         for bssid, observed in per_bssid.items():
-            recent: list[Beacon] = []
+            last: Beacon | None = None
             for item in sorted(observed, key=lambda frame: frame.timestamp):
-                recent = [
-                    old for old in recent if item.timestamp - old.timestamp <= max_gap_seconds
-                ]
-                for old in recent:
-                    if old.ap.security != item.ap.security:
-                        findings.append({
+                if last is not None and item.timestamp - last.timestamp <= max_gap_seconds:
+                    difference: dict | None = None
+                    if last.ap.security != item.ap.security:
+                        difference = {
                             "kind": "intra_capture_security_conflict",
-                            "bssid": bssid,
-                            "first_security": old.ap.security,
+                            "first_security": last.ap.security,
                             "second_security": item.ap.security,
-                            "delta_ms": round((item.timestamp - old.timestamp) * 1000, 3),
+                        }
+                    elif (
+                        last.ap.fingerprint and item.ap.fingerprint
+                        and last.ap.fingerprint.split(":", 1)[0]
+                            == item.ap.fingerprint.split(":", 1)[0]
+                        and last.ap.fingerprint != item.ap.fingerprint
+                    ):
+                        difference = {
+                            "kind": "intra_capture_radio_signature_conflict",
+                            "first_fingerprint": last.ap.fingerprint,
+                            "second_fingerprint": item.ap.fingerprint,
+                        }
+                    if difference is not None:
+                        findings.append({
+                            "bssid": bssid,
+                            **difference,
+                            "delta_ms": round((item.timestamp - last.timestamp) * 1000, 3),
                             "timestamp": item.timestamp,
                         })
-                        break  # avoid inflating repeat broadcasts into many alerts
-                recent.append(item)
+                last = item
         return findings
 
 
