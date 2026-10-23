@@ -27,6 +27,7 @@ class Scenario:
     malicious: bool
     explanation: str
     frames: tuple[Network, ...]
+    schedule: str = "interleaved"
 
 
 def _ie(tag: int, value: bytes) -> bytes:
@@ -89,6 +90,7 @@ def scenarios() -> tuple[Scenario, ...]:
         Scenario(
             "firmware_security_migration", False, "A legitimate AP changes to WPA3 during configuration.",
             (campus, Network(campus.bssid, campus.ssid, "WPA3")),
+            schedule="transition",
         ),
         Scenario(
             "same_security_clone", True, "An indistinguishable clone advertises exactly the same fields.",
@@ -115,24 +117,29 @@ def scenarios() -> tuple[Scenario, ...]:
 
 def write_pcap(path: str | Path, networks: tuple[Network, ...],
                seed: int = 0, frame_repeats: int = 3,
-               packet_loss: float = 0.0) -> int:
+               packet_loss: float = 0.0, schedule: str = "interleaved") -> int:
     if not 1 <= frame_repeats <= 100:
         raise ValueError("frame_repeats must be in 1..100")
     if not 0 <= packet_loss <= 1:
         raise ValueError("packet_loss must be between 0 and 1")
+    if schedule not in ("interleaved", "transition"):
+        raise ValueError("schedule must be interleaved or transition")
     rng = random.Random(seed)
     count = 0
     # The same base time is used across captures so comparisons are reproducible.
     with Path(path).open("wb") as output:
         output.write(struct.pack("<IHHIIII", 0xa1b2c3d4, 2, 4, 0, 0, 65535, 127))
-        for repetition in range(frame_repeats):
-            for i, network in enumerate(networks):
-                if rng.random() < packet_loss:
-                    continue
-                usec = (repetition * len(networks) + i) * 100_000
-                frame = beacon_bytes(network, repetition * len(networks) + i, usec)
-                output.write(struct.pack("<IIII", 1_782_000_000 + usec // 1_000_000,
-                                         usec % 1_000_000, len(frame), len(frame)))
-                output.write(frame)
-                count += 1
+        if schedule == "transition":
+            frame_order = [network for network in networks for _ in range(frame_repeats)]
+        else:
+            frame_order = [network for _ in range(frame_repeats) for network in networks]
+        for index, network in enumerate(frame_order):
+            if rng.random() < packet_loss:
+                continue
+            usec = index * 100_000
+            frame = beacon_bytes(network, index, usec)
+            output.write(struct.pack("<IIII", 1_782_000_000 + usec // 1_000_000,
+                                     usec % 1_000_000, len(frame), len(frame)))
+            output.write(frame)
+            count += 1
     return count
