@@ -113,6 +113,7 @@ def main(argv: list[str] | None = None) -> int:
     cooperative.add_argument("--seeds", type=int, default=20)
     cooperative.add_argument("--sensors", type=int, default=3)
     cooperative.add_argument("--loss", type=float, nargs="+", default=[0.2, 0.5])
+    cooperative.add_argument("--loss-model", choices=("independent", "shared"), default="independent")
     cooperative.add_argument("--output", choices=("table", "json"), default="table")
     args = parser.parse_args(argv)
     try:
@@ -144,12 +145,12 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "lab-cooperative":
             from .pcap_experiment import run_cooperative_lab
-            report = run_cooperative_lab(args.seeds, args.sensors, tuple(args.loss))
+            report = run_cooperative_lab(args.seeds, args.sensors, tuple(args.loss), args.loss_model)
             if args.output == "json":
                 print(json.dumps(report, indent=2))
             else:
                 print(f"AetherLens cooperative detection | {report['sensor_count']} observers | "
-                      f"{report['seeds']} seeds")
+                      f"{report['seeds']} seeds | {report['loss_model']} losses")
                 for row in report["results"]:
                     first, combined = row["single_sensor"], row["cooperative"]
                     print(f"  loss={row['loss_rate']:.0%}: "
