@@ -41,6 +41,38 @@ Windows selects the first wireless adapter automatically. If multiple adapters a
 
 Live Windows scanning uses the **WLAN API**, not `netsh`, and requests a fresh scan before collecting BSSID, frequency, RSSI, SSID, and security information. Windows Location and desktop-app location access may need to be enabled under Settings > Privacy & security > Location. The **WLAN AutoConfig** service and a compatible Wi-Fi adapter are required. Windows drivers can limit the visibility and freshness of scan results; a completed scan does not imply that every nearby network was detected. Native radio scanning must be verified on physical hardware; automated Windows tests cover API layouts, parser logic and the platform-independent commands without relying on a CI runner's Wi-Fi hardware.
 
+## Cooperating sensors: detect wireless identity conflicts
+
+Two laptops can compare observations without a server or specialized monitor-mode hardware. Each collects an access-point scan, exports an offline evidence file, and transfers it by any file-sharing method you already trust.
+
+On a Linux observer:
+
+```bash
+aetherlens --db hallway.sqlite scan --interface wlan0
+aetherlens --db hallway.sqlite export hallway.json --sensor laptop-a --site hallway
+```
+
+On a Windows observer (PowerShell):
+
+```powershell
+aetherlens --db lab.sqlite scan
+aetherlens --db lab.sqlite export lab.json --sensor laptop-b --site lab
+```
+
+Copy both JSON files to one computer, then compare the time-aligned observations:
+
+```bash
+aetherlens fuse hallway.json lab.json --skew 30
+aetherlens fuse hallway.json lab.json --output html --save investigation.html
+aetherlens fuse hallway.json lab.json --output json --save investigation.json
+```
+
+Open `investigation.html` locally. AetherLens correlates the same BSSID across independent sensors and reports conflicting security settings, incompatible radio signatures, or SSIDs observed within the selected time tolerance. Normal infrastructure can have the same SSID on many *different* BSSIDs; that is not, by itself, a conflict.
+
+Each export has a SHA-256 integrity checksum, **not a cryptographic signature or proof that a sensor is trustworthy**. Dates need synchronized device clocks. Fingerprints from Windows raw beacon information elements (`ie1`) and Linux `iw` textual capabilities (`iw1`) cannot be compared directly. RSSI is not cross-device calibrated, and neither physical positioning nor definitive evil-twin attribution is implied.
+
+The feature is designed for low-overhead, authorized wireless surveys; raw scan summaries alone cannot observe client attacks, deauthentication traffic, or all nearby networks.
+
 ## Reproducible performance benchmark
 
 ```bash
@@ -64,7 +96,7 @@ The included three **simulated** scenarios deliberately contain a true positive,
 
 ## Data model
 
-Every imported snapshot supplies `collected_at` (timezone-aware ISO 8601), `source`, and an `access_points` array. Each observation contains `bssid`, `ssid`, `frequency_mhz`, `signal_dbm`, and `security`. A real example is in [examples/sample_scans.json](examples/sample_scans.json).
+Every imported snapshot supplies `collected_at` (timezone-aware ISO 8601), `source`, and an `access_points` array. Each observation contains `bssid`, `ssid`, `frequency_mhz`, `signal_dbm`, and `security` (plus optional `fingerprint`). A recorded sample is in [examples/sample_scans.json](examples/sample_scans.json).
 
 ## Team development
 
