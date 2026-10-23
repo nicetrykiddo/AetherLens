@@ -81,6 +81,8 @@ AetherLens can ingest actual 802.11 **beacon and probe-response management frame
 aetherlens replay-pcap capture.pcap --output json
 aetherlens replay-pcap capture.pcap --record --db survey.sqlite
 aetherlens lab --seeds 20 --loss 0 0.2 0.5 --output json
+aetherlens lab-cooperative --seeds 50 --sensors 3 --loss 0.2 0.5 --loss-model independent --output json
+aetherlens lab-cooperative --seeds 50 --sensors 3 --loss 0.2 0.5 --loss-model shared --output json
 aetherlens lab --seeds 1 --loss 0 --evidence generated
 aetherlens replay-pcap generated/open_clone-seed0-loss0000.pcap
 ```
@@ -88,6 +90,8 @@ aetherlens replay-pcap generated/open_clone-seed0-loss0000.pcap
 The lab constructs structurally valid 802.11 beacon frames and Radiotap metadata, writes real PCAP-format files, then feeds those **bytes** through the same parser exposed to external captures. The experiment varies frame loss, includes independent benign labels, and reports TP/FP/FN/TN, precision, recall, F1, and parser/detection latency. Expected attack scenarios include an open BSSID clone, a same-security clone, and radio capability impersonation. The suite also tests normal multi-AP deployment, hidden networks, channel changes and one-way security migrations.
 
 The packet detector looks for an **A-B-A alternation** in a short window, instead of flagging every single configuration change as an attack. It intentionally misses indistinguishable clones; a genuine transient migration can also be confused with an attacker if the observed capabilities alternate. Synthetic classification scores are **not** field attack-detection accuracy.
+
+The cooperative experiment compares one observer against an **any-sensor alert** baseline across independent or perfectly shared packet losses. It never mixes unsynchronized raw sensor timestamps to manufacture A-B-A observations. The two loss models bound an optimistic and pessimistic case: full shared losses provide no diversity benefit. This is still synthetic and cannot establish performance in a real building.
 
 Only classic Radiotap PCAP (linktype 127) is currently supported, **not pcapng or Ethernet captures**. Use Wireshark's `editcap -F libpcap input.pcapng output.pcap` to convert compatible capture files. Drivers must expose management frames and Radiotap RSSI/channel metadata. An ordinary Windows association capture generally does not do that without monitor-mode support.
 
