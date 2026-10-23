@@ -31,6 +31,15 @@ def compare(previous: Snapshot, current: Snapshot) -> list[Finding]:
                     "high", "security_downgrade", bssid,
                     f"{old.ssid or '<hidden>'}: {old.security} -> {ap.security} on the same BSSID",
                 ))
+            if (old.fingerprint and ap.fingerprint
+                    and old.fingerprint.split(":", 1)[0] == ap.fingerprint.split(":", 1)[0]
+                    and old.fingerprint != ap.fingerprint):
+                findings.append(Finding(
+                    "medium", "radio_signature_changed", bssid,
+                    "Advertised radio capabilities changed for a known BSSID. "
+                    "Possible hardware replacement, firmware update, or identity conflict; "
+                    "requires verification.",
+                ))
             if ap.ssid != old.ssid:
                 findings.append(Finding(
                     "medium", "ssid_changed", bssid,
