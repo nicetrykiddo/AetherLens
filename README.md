@@ -6,7 +6,7 @@ AetherLens collects access-point observations using the Linux `iw` utility, save
 
 ## Quick start
 
-Requires Python 3.11+ and Linux `iw` for live scans. Run from the repository root:
+Requires Python 3.11+. Live scanning uses Linux `iw` or the native Windows WLAN API. Run from the repository root:
 
 ```bash
 python -m pip install -e .
@@ -23,6 +23,23 @@ aetherlens --db live.sqlite report
 ```
 
 Some adapters and drivers cannot scan while connected. AetherLens does not perform packet injection, deauthentication, or network association.
+
+### Windows 10/11 (PowerShell)
+
+```powershell
+git clone https://github.com/nicetrykiddo/AetherLens.git
+cd AetherLens
+py -m venv .venv
+.\\.venv\\Scripts\\Activate.ps1
+python -m pip install -e .
+aetherlens interfaces
+aetherlens --db wifi.sqlite scan
+aetherlens --db wifi.sqlite report
+```
+
+Windows selects the first wireless adapter automatically. If multiple adapters are present, run `aetherlens interfaces` and provide a unique part of the adapter description using `aetherlens scan --interface "Intel"`. Both platforms share the same SQLite database format, JSON reports, benchmark command, and labeled evaluation.
+
+Live Windows scanning uses the **WLAN API**, not `netsh`, and requests a fresh scan before collecting BSSID, frequency, RSSI, SSID, and security information. Windows Location and desktop-app location access may need to be enabled under Settings > Privacy & security > Location. The **WLAN AutoConfig** service and a compatible Wi-Fi adapter are required. Windows drivers can limit the visibility and freshness of scan results; a completed scan does not imply that every nearby network was detected. Native radio scanning must be verified on physical hardware; automated Windows tests cover API layouts, parser logic and the platform-independent commands without relying on a CI runner's Wi-Fi hardware.
 
 ## Reproducible performance benchmark
 
