@@ -2,6 +2,7 @@
 
 import re
 import subprocess
+import sys
 
 from .model import AccessPoint, Snapshot
 
@@ -64,7 +65,30 @@ def parse_iw_scan(raw: str) -> list[AccessPoint]:
     return sorted(points.values(), key=lambda p: (-p.signal_dbm, p.bssid))
 
 
-def scan(interface: str, timeout: int = 45) -> Snapshot:
+def interfaces() -> list[str]:
+    if sys.platform == "win32":
+        from .windows import interfaces as windows_interfaces
+        return windows_interfaces()
+    if sys.platform != "linux":
+        raise RuntimeError(f"Wi-Fi scanning is not supported on {sys.platform}")
+    try:
+        result = subprocess.run(["iw", "dev"], capture_output=True, text=True,
+                                timeout=10, check=False)
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError("Unable to enumerate Wi-Fi adapters with iw") from exc
+    if result.returncode:
+        raise RuntimeError(result.stderr.strip() or "iw dev failed")
+    return re.findall(r"^\\s+Interface\\s+(\\S+)", result.stdout, re.MULTILINE)
+
+
+def scan(interface: str | None = None, timeout: int = 45) -> Snapshot:
+    if sys.platform == "win32":
+        from .windows import scan as windows_scan
+        return windows_scan(interface, timeout=min(timeout, 12))
+    if sys.platform != "linux":
+        raise RuntimeError(f"Wi-Fi scanning is not supported on {sys.platform}")
+    if interface is None:
+        raise ValueError("Linux needs --interface; run 'aetherlens interfaces' to list adapters")
     if not re.fullmatch(r"[a-zA-Z0-9_.-]{1,15}", interface):
         raise ValueError("invalid network interface name")
     try:
