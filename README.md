@@ -1,17 +1,51 @@
 # AetherLens
 
-Wireless environment discovery and change detection from Wi-Fi scan observations.
+Wi-Fi access-point discovery, historical inventory, and explainable change detection for networks you own or are authorized to assess.
 
-AetherLens collects nearby access-point observations, keeps a queryable history, and measures discovery and detection quality against reproducible baselines. It is intended for networks you own or are authorized to assess.
+AetherLens collects access-point observations using the Linux `iw` utility, saves each scan atomically to SQLite, and highlights observable changes such as security downgrades and newly seen open transmitters advertising an existing secured SSID. Such findings are **indicators**, not proof of an attack.
 
-## Scope
+## Quick start
 
-- **Software engineering:** collection, validated data models, durable storage, command-line workflows, automated tests.
-- **Machine learning:** experimentally evaluated anomaly detection with explicit baselines, once representative labeled data is available.
-- **AI:** evidence-based interpretation of observations and changes, without inventing threats or certainty.
+Requires Python 3.11+ and Linux `iw` for live scans. Run from the repository root:
 
-Python 3.11+ is required. See the CLI and benchmark commands as they are introduced below.
+```bash
+python -m pip install -e .
+aetherlens --db demo.sqlite import examples/sample_scans.json
+aetherlens --db demo.sqlite report --output json
+```
 
-## Development
+To collect from your own wireless adapter (replace `wlan0`; scanning may require elevated privileges):
 
-The application is developed as independent components so collection, analysis, and user experience work can happen on separate branches.
+```bash
+iw dev
+aetherlens --db live.sqlite scan --interface wlan0
+aetherlens --db live.sqlite report
+```
+
+Some adapters and drivers cannot scan while connected. AetherLens does not perform packet injection, deauthentication, or network association.
+
+## Reproducible performance benchmark
+
+```bash
+aetherlens benchmark --aps 1000 --repeats 5
+aetherlens benchmark --aps 1000 --repeats 5 --output json
+python -m unittest discover -s tests -v
+```
+
+The synthetic benchmark measures SQLite storage operations on the machine where it runs: per-observation commits versus one transaction per scan, plus latest-scan query p50/p95. It **does not** measure over-the-air discovery time or attack-detection accuracy. Results vary with disk, filesystem, cache, hardware, and SQLite settings.
+
+## Data model
+
+Every imported snapshot supplies `collected_at` (timezone-aware ISO 8601), `source`, and an `access_points` array. Each observation contains `bssid`, `ssid`, `frequency_mhz`, `signal_dbm`, and `security`. A real example is in [examples/sample_scans.json](examples/sample_scans.json).
+
+## Team development
+
+The independent modules are in `src/aetherlens/`: `collector.py` parses device observations, `model.py` validates them, `storage.py` records their history, `analysis.py` explains changes, and `benchmark.py` measures performance. Changes to the observation schema should preserve existing import and CLI tests.
+
+## Research direction
+
+A fair detection study needs *labeled* real-world captures, device/site-separated evaluation, precision, recall, F1, false-positive rate, and inference latency. Synthetic storage measurements cannot substitute for that study.
+
+Relevant published work: [Banakh et al., *Data Mining Approach for Evil Twin Attack Identification in Wi-Fi Networks* (2024)](https://doi.org/10.3390/data9100119). The [IEEE 802.11 Beacon Frame Dataset for Rogue Access Point Detection in Urban Environments (2026)](https://doi.org/10.17632/mc83zc5768.4) is a candidate for independently evaluated beacon-level extensions; its features are richer than `iw` scan summaries, so comparison would first require compatible capture support.
+
+This release is a functioning access-point discovery and rule-based change-detection baseline, **not yet** a validated ML intrusion detector.
