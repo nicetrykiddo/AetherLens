@@ -48,7 +48,7 @@ def run_lab(seeds: int = 10, loss_rates: tuple[float, ...] = (0.0, 0.2, 0.5),
                     path = root / name
                     frame_count = write_pcap(
                         path, scenario.frames, seed=trial * 7919 + 31,
-                        packet_loss=loss, frame_repeats=3,
+                        packet_loss=loss, frame_repeats=3, schedule=scenario.schedule,
                     )
                     packets += frame_count
                     start = perf_counter()
