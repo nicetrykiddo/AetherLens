@@ -102,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Saved offline evidence report to {args.save}")
             elif args.output == "json":
                 if args.save is not None:
-                    args.save.write_text(json.dumps(report, indent=2) + "\\n", encoding="utf-8")
+                    args.save.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
                     print(f"Saved evidence JSON to {args.save}")
                 else:
                     print(json.dumps(report, indent=2))
