@@ -98,3 +98,86 @@ def run_lab(seeds: int = 10, loss_rates: tuple[float, ...] = (0.0, 0.2, 0.5),
         return run_at(Path(output_directory))
     with TemporaryDirectory(prefix="aetherlens-pcap-lab-") as temporary:
         return run_at(Path(temporary))
+
+def run_cooperative_lab(seeds: int = 20, sensors: int = 3,
+                        loss_rates: tuple[float, ...] = (0.2, 0.5)) -> dict:
+    """Compare one lossy observer with fused, independently lossy observers.
+
+    Sensor clocks, frame generation, and received-content fidelity are idealized.
+    Packet drops are independently seeded and identically distributed across
+    observers. This is a capture-diversity experiment, not a calibrated RF model.
+    """
+    from .pcap import Trace
+
+    if not 1 <= seeds <= 1000:
+        raise ValueError("seeds must be between 1 and 1000")
+    if not 2 <= sensors <= 8:
+        raise ValueError("sensors must be in 2..8")
+    if not 1 <= len(loss_rates) <= 10 or any(not 0 <= x <= 1 for x in loss_rates):
+        raise ValueError("provide 1..10 loss rates in 0..1")
+    rows = []
+    with TemporaryDirectory(prefix="aetherlens-coop-lab-") as temporary:
+        for loss in loss_rates:
+            tp = fp = fn = tn = 0
+            ctp = cfp = cfn = ctn = 0
+            for seed in range(seeds):
+                for scenario in scenarios():
+                    streams = []
+                    for sensor in range(sensors):
+                        path = Path(temporary) / f"capture-{sensor}.pcap"
+                        write_pcap(
+                            path, scenario.frames,
+                            seed=seed * 7919 + sensor * 65537 + 31,
+                            packet_loss=loss, frame_repeats=3,
+                            schedule=scenario.schedule,
+                        )
+                        streams.append(read_pcap(path))
+                    single = bool(streams[0].contradictions())
+                    all_frames = tuple(
+                        frame for capture in streams for frame in capture.frames
+                    )
+                    fused = bool(Trace(
+                        all_frames,
+                        sum(capture.packets_read for capture in streams),
+                        sum(capture.packets_skipped for capture in streams),
+                    ).contradictions())
+
+                    if scenario.malicious:
+                        if single:
+                            tp += 1
+                        else:
+                            fn += 1
+                        if fused:
+                            ctp += 1
+                        else:
+                            cfn += 1
+                    else:
+                        if single:
+                            fp += 1
+                        else:
+                            tn += 1
+                        if fused:
+                            cfp += 1
+                        else:
+                            ctn += 1
+            first = _metrics(tp, fp, fn, tn)
+            combined = _metrics(ctp, cfp, cfn, ctn)
+            rows.append({
+                "loss_rate": loss,
+                "cases": seeds * len(scenarios()),
+                "single_sensor": first,
+                "cooperative": combined,
+                "absolute_recall_gain": round(combined["recall"] - first["recall"], 4),
+                "missed_attacks_recovered": ctp - tp,
+            })
+    return {
+        "workload": "synthetic_independent_packet_loss_capture_diversity",
+        "seeds": seeds,
+        "sensor_count": sensors,
+        "results": rows,
+        "limitations": [
+            "Uncalibrated independent random frame drops; real sensors may have correlated losses",
+            "Identical transmitter frames and synchronized sensor clocks are assumed",
+            "A synthetic corpus cannot validate field threat detection or prove physical localization",
+        ],
+    }
