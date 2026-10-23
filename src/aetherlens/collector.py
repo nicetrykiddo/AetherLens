@@ -79,7 +79,7 @@ def interfaces() -> list[str]:
         raise RuntimeError("Unable to enumerate Wi-Fi adapters with iw") from exc
     if result.returncode:
         raise RuntimeError(result.stderr.strip() or "iw dev failed")
-    return re.findall(r"^\\s+Interface\\s+(\\S+)", result.stdout, re.MULTILINE)
+    return re.findall(r"^\s+Interface\s+(\S+)", result.stdout, re.MULTILINE)
 
 
 def scan(interface: str | None = None, timeout: int = 45) -> Snapshot:
