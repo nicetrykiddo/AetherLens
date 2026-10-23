@@ -56,46 +56,55 @@ class Trace:
         return Snapshot.create(list(strongest.values()), source, observed_at)
 
     def contradictions(self, max_gap_seconds: float = 3.0) -> list[dict]:
-        """Correlate mutually inconsistent same-BSSID frames, within one capture.
+        """Look for A-B-A identity alternation, not a single configuration change.
 
-        Several changes can be legitimate; this reports evidence, not attribution.
+        An A->B transition may be legitimate firmware reconfiguration. A->B->A
+        within the time window is stronger evidence of overlapping identity
+        claims. Dropped frames can turn a real attack into a missed alert.
         """
         if max_gap_seconds < 0:
             raise ValueError("max_gap_seconds cannot be negative")
         per_bssid: dict[str, list[Beacon]] = {}
         for item in self.frames:
             per_bssid.setdefault(item.ap.bssid, []).append(item)
-        findings = []
-        for bssid, observed in per_bssid.items():
-            last: Beacon | None = None
-            for item in sorted(observed, key=lambda frame: frame.timestamp):
-                if last is not None and item.timestamp - last.timestamp <= max_gap_seconds:
-                    difference: dict | None = None
-                    if last.ap.security != item.ap.security:
-                        difference = {
-                            "kind": "intra_capture_security_conflict",
-                            "first_security": last.ap.security,
-                            "second_security": item.ap.security,
-                        }
-                    elif (
-                        last.ap.fingerprint and item.ap.fingerprint
-                        and last.ap.fingerprint.split(":", 1)[0]
-                            == item.ap.fingerprint.split(":", 1)[0]
-                        and last.ap.fingerprint != item.ap.fingerprint
-                    ):
-                        difference = {
-                            "kind": "intra_capture_radio_signature_conflict",
-                            "first_fingerprint": last.ap.fingerprint,
-                            "second_fingerprint": item.ap.fingerprint,
-                        }
-                    if difference is not None:
-                        findings.append({
-                            "bssid": bssid,
-                            **difference,
-                            "delta_ms": round((item.timestamp - last.timestamp) * 1000, 3),
-                            "timestamp": item.timestamp,
-                        })
-                last = item
+
+        findings: list[dict] = []
+        for bssid, observations in per_bssid.items():
+            runs: list[Beacon] = []
+            alerted_pairs: set[frozenset] = set()
+            for item in sorted(observations, key=lambda frame: frame.timestamp):
+                identity = (item.ap.security, item.ap.fingerprint)
+                if runs and (runs[-1].ap.security, runs[-1].ap.fingerprint) == identity:
+                    continue
+                runs.append(item)
+                if len(runs) > 3:
+                    runs.pop(0)
+                if len(runs) != 3:
+                    continue
+                first, middle, last = runs
+                prior = (first.ap.security, first.ap.fingerprint)
+                other = (middle.ap.security, middle.ap.fingerprint)
+                if (prior != identity or
+                        last.timestamp - first.timestamp > max_gap_seconds):
+                    continue
+                pair = frozenset((prior, other))
+                if pair in alerted_pairs:
+                    continue
+                alerted_pairs.add(pair)
+                kind = (
+                    "intra_capture_security_conflict"
+                    if first.ap.security != middle.ap.security
+                    else "intra_capture_radio_signature_conflict"
+                )
+                findings.append({
+                    "kind": kind,
+                    "bssid": bssid,
+                    "first_security": first.ap.security,
+                    "second_security": middle.ap.security,
+                    "delta_ms": round((last.timestamp - first.timestamp) * 1000, 3),
+                    "timestamp": last.timestamp,
+                    "evidence": "A-B-A identity alternation observed in beacon frames",
+                })
         return findings
 
 
