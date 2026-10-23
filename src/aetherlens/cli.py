@@ -86,7 +86,7 @@ def main(argv: list[str] | None = None) -> int:
             from .collector import interfaces
             names = interfaces()
             if names:
-                print("\\n".join(names))
+                print("\n".join(names))
             else:
                 print("No wireless adapters available")
             return 0
