@@ -87,14 +87,25 @@ def main(argv: list[str] | None = None) -> int:
     fuse_cmd = commands.add_parser("fuse", help="Correlate time-aligned captures from multiple sensors")
     fuse_cmd.add_argument("paths", type=Path, nargs="+")
     fuse_cmd.add_argument("--skew", type=float, default=30, help="Maximum timestamp difference in seconds")
-    fuse_cmd.add_argument("--output", choices=("table", "json"), default="table")
+    fuse_cmd.add_argument("--output", choices=("table", "json", "html"), default="table")
+    fuse_cmd.add_argument("--save", type=Path, help="Output path (required for HTML)")
     args = parser.parse_args(argv)
     try:
         if args.command == "fuse":
             from .fusion import fuse, read_capture
             report = fuse([read_capture(path) for path in args.paths], args.skew)
-            if args.output == "json":
-                print(json.dumps(report, indent=2))
+            if args.output == "html":
+                from .reporting import save_fusion
+                if args.save is None:
+                    raise ValueError("--save FILE is required with --output html")
+                save_fusion(args.save, report)
+                print(f"Saved offline evidence report to {args.save}")
+            elif args.output == "json":
+                if args.save is not None:
+                    args.save.write_text(json.dumps(report, indent=2) + "\\n", encoding="utf-8")
+                    print(f"Saved evidence JSON to {args.save}")
+                else:
+                    print(json.dumps(report, indent=2))
             else:
                 print(f"AetherLens fusion | {report['sensor_count']} sensors | "
                       f"{report['shared_bssids']} overlapping BSSIDs")
