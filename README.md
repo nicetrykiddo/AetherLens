@@ -42,6 +42,10 @@ Every imported snapshot supplies `collected_at` (timezone-aware ISO 8601), `sour
 
 The independent modules are in `src/aetherlens/`: `collector.py` parses device observations, `model.py` validates them, `storage.py` records their history, `analysis.py` explains changes, and `benchmark.py` measures performance. Changes to the observation schema should preserve existing import and CLI tests.
 
+## Research extension: indoor localization
+
+An optional Streamlit prototype lives in [research/indoor-localization-demo](research/indoor-localization-demo/README.md). It explores room classification from a public, fixed-schema Wi-Fi RSSI dataset. It is deliberately separate from the core CLI: it does not consume live AetherLens scans, and its room scores are not validated localization confidence. See the extension README for dataset limitations, setup, and evaluation cautions.
+
 ## Research direction
 
 A fair detection study needs *labeled* real-world captures, device/site-separated evaluation, precision, recall, F1, false-positive rate, and inference latency. Synthetic storage measurements cannot substitute for that study.
