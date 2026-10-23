@@ -101,13 +101,15 @@ def run_lab(seeds: int = 10, loss_rates: tuple[float, ...] = (0.0, 0.2, 0.5),
 
 def run_cooperative_lab(seeds: int = 20, sensors: int = 3,
                         loss_rates: tuple[float, ...] = (0.2, 0.5)) -> dict:
-    """Compare one lossy observer with fused, independently lossy observers.
+    """Compare one observer with an any-sensor alert baseline.
 
-    Sensor clocks, frame generation, and received-content fidelity are idealized.
-    Packet drops are independently seeded and identically distributed across
-    observers. This is a capture-diversity experiment, not a calibrated RF model.
+    Each detector evaluates its own frame timeline independently. A receiver
+    reports an alert if any observer has sufficient A-B-A evidence. Combining
+    raw timestamps without verified clock synchronization creates false
+    temporal contradictions and is deliberately forbidden here.
+
+    Packet loss remains independent and uncalibrated in this benchmark.
     """
-    from .pcap import Trace
 
     if not 1 <= seeds <= 1000:
         raise ValueError("seeds must be between 1 and 1000")
@@ -132,15 +134,9 @@ def run_cooperative_lab(seeds: int = 20, sensors: int = 3,
                             schedule=scenario.schedule,
                         )
                         streams.append(read_pcap(path))
-                    single = bool(streams[0].contradictions())
-                    all_frames = tuple(
-                        frame for capture in streams for frame in capture.frames
-                    )
-                    fused = bool(Trace(
-                        all_frames,
-                        sum(capture.packets_read for capture in streams),
-                        sum(capture.packets_skipped for capture in streams),
-                    ).contradictions())
+                    sensor_alerts = [bool(stream.contradictions()) for stream in streams]
+                    single = sensor_alerts[0]
+                    fused = any(sensor_alerts)
 
                     if scenario.malicious:
                         if single:
@@ -177,7 +173,8 @@ def run_cooperative_lab(seeds: int = 20, sensors: int = 3,
         "results": rows,
         "limitations": [
             "Uncalibrated independent random frame drops; real sensors may have correlated losses",
-            "Identical transmitter frames and synchronized sensor clocks are assumed",
+            "Idealized identical transmitted frames; sensors compare only their own clocks",
+            "An any-sensor alert can increase false positives as more receivers participate",
             "A synthetic corpus cannot validate field threat detection or prove physical localization",
         ],
     }
