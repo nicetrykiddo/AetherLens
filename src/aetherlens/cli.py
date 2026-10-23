@@ -89,8 +89,38 @@ def main(argv: list[str] | None = None) -> int:
     fuse_cmd.add_argument("--skew", type=float, default=30, help="Maximum timestamp difference in seconds")
     fuse_cmd.add_argument("--output", choices=("table", "json", "html"), default="table")
     fuse_cmd.add_argument("--save", type=Path, help="Output path (required for HTML)")
+    plan_cmd = commands.add_parser("plan", help="Choose surveyed sites that cover the most observed transmitters")
+    plan_cmd.add_argument("paths", type=Path, nargs="+")
+    plan_cmd.add_argument("--budget", type=int, required=True, help="Number of sites to retain")
+    plan_cmd.add_argument("--witnesses", type=int, default=1, help="Desired observers per transmitter (1-3)")
+    plan_cmd.add_argument("--min-rssi", type=float, default=-85)
+    plan_cmd.add_argument("--output", choices=("table", "json"), default="table")
     args = parser.parse_args(argv)
     try:
+        if args.command == "plan":
+            from .fusion import read_capture
+            from .planning import plan_sites
+            result = plan_sites(
+                [read_capture(path) for path in args.paths],
+                args.budget, args.witnesses, args.min_rssi,
+            )
+            if args.output == "json":
+                print(json.dumps(result, indent=2))
+            else:
+                print(f"AetherLens survey planner | {result['candidate_sites']} measured sites")
+                print(f"  Keep: {', '.join(result['selected_sites'])}")
+                print(f"  Found {result['unique_bssids_found']} / "
+                      f"{result['unique_bssids_available']} observed transmitters "
+                      f"({result['coverage_percent']}%)")
+                print(f"  Multiple witnesses: {result['bssids_with_multiple_witnesses']}")
+                if result["exact_optimum_score"] is not None:
+                    print(f"  Greedy objective: {result['score']} | "
+                          f"exact optimum: {result['exact_optimum_score']} "
+                          f"({result['greedy_to_optimum_percent']}% of optimal)")
+                else:
+                    print("  Exact baseline omitted: more than 50,000 candidate combinations")
+                print(result["note"])
+            return 0
         if args.command == "fuse":
             from .fusion import fuse, read_capture
             report = fuse([read_capture(path) for path in args.paths], args.skew)
