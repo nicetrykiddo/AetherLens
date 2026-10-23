@@ -76,8 +76,37 @@ def main(argv: list[str] | None = None) -> int:
     bench_cmd.add_argument("--aps", type=int, default=1000, help="Distinct APs per run")
     bench_cmd.add_argument("--repeats", type=int, default=3)
     bench_cmd.add_argument("--output", choices=("table", "json"), default="table")
+    eval_cmd = commands.add_parser("evaluate", help="Score high-severity alerts on labeled scan pairs")
+    eval_cmd.add_argument("path", type=Path)
+    eval_cmd.add_argument("--output", choices=("table", "json"), default="table")
     args = parser.parse_args(argv)
     try:
+        if args.command == "evaluate":
+            from .evaluation import LabeledPair, evaluate
+            raw = json.loads(args.path.read_text(encoding="utf-8"))
+            pairs = []
+            for item in raw:
+                def restore(entry):
+                    return Snapshot.create(
+                        [AccessPoint(**ap) for ap in entry["access_points"]],
+                        entry["source"], entry["collected_at"],
+                    )
+                pairs.append(LabeledPair(
+                    restore(item["previous"]), restore(item["current"]),
+                    frozenset(mac.lower() for mac in item["suspicious_bssids"]),
+                    item["scenario"],
+                ))
+            metrics = evaluate(pairs)
+            if args.output == "json":
+                print(json.dumps(metrics, indent=2))
+            else:
+                print(f"Detection evaluation | {metrics['cases']} labeled scenarios")
+                print(f"  TP={metrics['true_positives']} FP={metrics['false_positives']} "
+                      f"FN={metrics['false_negatives']} TN={metrics['true_negatives']}")
+                print(f"  Precision={metrics['precision']:.3f} Recall={metrics['recall']:.3f} "
+                      f"F1={metrics['f1']:.3f} FPR={metrics['false_positive_rate']:.3f}")
+                print("  Scores describe only the provided labels; sample cases are simulated, not field validation.")
+            return 0
         if args.command == "benchmark":
             from .benchmark import run
             metrics = run(args.aps, args.repeats)
